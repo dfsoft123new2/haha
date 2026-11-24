@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>访客登记系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@75..112.5,300..600&family=Noto+Sans+SC:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#dbe0d1;
+  --paper:#e5e8dc;
+  --paper-2:#eef0e6;
+  --ink:#24281f;
+  --ink-2:#454a3f;
+  --dim:#767c6d;
+  --faint:#a3a899;
+  --line:#b1b7a5;
+  --red:#7a2921;
+  --yellow:#9a8738;
+  --yellow-bg:#d6d0a4;
+  --led-on:#4a8845;
+  --led-glow:rgba(74,136,69,.5);
+  --led-off:#8b8e86;
+  --bleed:rgba(122,41,33,.17);
+  --focus:rgba(255,255,255,.28);
+  --scan:rgba(20,26,16,.035);
+  --band:rgba(255,255,255,.22);
+  --streak:rgba(28,32,24,.055);
+  --noise-op:.2;
+  --noise-blend:multiply;
+  --mono:"Martian Mono","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",ui-monospace,Menlo,Consolas,monospace;
+  --cjk:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121410;
+    --paper:#171a15;
+    --paper-2:#1e221b;
+    --ink:#b1b8a6;
+    --ink-2:#8d9484;
+    --dim:#666d5e;
+    --faint:#434a3e;
+    --line:#30362c;
+    --red:#a4473c;
+    --yellow:#a08d47;
+    --yellow-bg:#27250f;
+    --led-on:#5a9853;
+    --led-glow:rgba(90,152,83,.4);
+    --led-off:#41453e;
+    --bleed:rgba(164,71,60,.2);
+    --focus:rgba(255,255,255,.03);
+    --scan:rgba(0,0,0,.24);
+    --band:rgba(255,255,255,.035);
+    --streak:rgba(200,210,190,.045);
+    --noise-op:.16;
+    --noise-blend:screen;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121410;
+  --paper:#171a15;
+  --paper-2:#1e221b;
+  --ink:#b1b8a6;
+  --ink-2:#8d9484;
+  --dim:#666d5e;
+  --faint:#434a3e;
+  --line:#30362c;
+  --red:#a4473c;
+  --yellow:#a08d47;
+  --yellow-bg:#27250f;
+  --led-on:#5a9853;
+  --led-glow:rgba(90,152,83,.4);
+  --led-off:#41453e;
+  --bleed:rgba(164,71,60,.2);
+  --focus:rgba(255,255,255,.03);
+  --scan:rgba(0,0,0,.24);
+  --band:rgba(255,255,255,.035);
+  --streak:rgba(200,210,190,.045);
+  --noise-op:.16;
+  --noise-blend:screen;
+}
+
+*,*::before,*::after{box-sizing:inherit}
+html{min-height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  margin:0;min-height:100%;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-stretch:75%;font-weight:400;
+  font-size:13.5px;line-height:1.65;
+  text-shadow:.35px 0 0 var(--bleed);
+  overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+:focus-visible{outline:1px dashed var(--ink-2);outline-offset:3px}
+
+/* 可漂移元素：--dx/--dy 是常驻错位，--gx/--gy 是提交时的短暂错位 */
+.d{transform:translate(calc(var(--dx,0px) + var(--gx,0px)),calc(var(--dy,0px) + var(--gy,0px)))}
+body.glitching .d{text-shadow:1.5px 0 0 var(--bleed),-1px 0 0 color-mix(in srgb,var(--yellow) 45%,transparent)}
+
+.page{position:relative;max-width:1020px;margin:0 auto;padding:46px 52px 120px 60px;overflow:clip}
+.page::after{content:"";position:absolute;left:0;right:0;top:var(--bandY,38%);height:5px;background:var(--streak);pointer-events:none}
+.streak{position:absolute;top:0;bottom:0;width:1px;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,var(--streak) 0 160px,transparent 160px 171px,var(--streak) 171px 430px,transparent 430px 446px,var(--streak) 446px 700px,transparent 700px 760px)}
+
+/* 页眉 */
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.sys-code{font-size:10.5px;color:var(--dim);letter-spacing:.1em;margin-bottom:16px}
+.lowres{filter:blur(.25px);opacity:.92}
+h1{position:relative;margin:0;font-family:var(--cjk);font-weight:500;font-size:clamp(22px,3.2vw,29px);letter-spacing:.16em;line-height:1.3;color:var(--ink)}
+h1::after{content:attr(data-ghost);position:absolute;left:1px;top:2px;opacity:.09;pointer-events:none;color:var(--ink);white-space:nowrap}
+h1 .alt{display:inline-block;transform:translateY(1px);font-weight:400}
+.sub{margin-top:9px;font-size:12px;color:var(--ink-2);letter-spacing:.05em}
+.sub .sep{color:var(--faint);margin:0 10px}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;font-size:10.5px;color:var(--dim)}
+.led-wrap{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink-2)}
+.led{width:7px;height:7px;border-radius:50%;background:var(--led-on);box-shadow:0 0 4px var(--led-glow);transition:background 9s linear,box-shadow 9s linear;animation:ledpulse 4.7s infinite steps(1)}
+.led.off{background:var(--led-off);box-shadow:none;animation:none}
+@keyframes ledpulse{0%,92%{opacity:1}93%,95%{opacity:.35}96%,100%{opacity:1}}
+.clock{color:var(--dim);font-variant-numeric:tabular-nums;margin-left:8px}
+.meta{display:flex;gap:16px;margin:0;flex-wrap:wrap;justify-content:flex-end}
+.meta div{display:flex;gap:6px}
+.meta dt{color:var(--faint)}
+.meta dd{margin:0;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.rule{position:relative;height:2px;margin-top:22px}
+.rule span{position:absolute;top:0;height:1px;background:var(--ink-2)}
+.rule span:first-child{left:0;width:63%}
+.rule span.off{left:calc(63% + 2px);right:0;top:1px}
+
+/* 系统提示 */
+.notice{margin:26px 0 6px;padding:10px 0;border-top:1px dotted var(--line);border-bottom:1px dotted var(--line);font-size:12.5px;color:var(--ink-2)}
+.n-line{margin:4px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:9.5px;letter-spacing:.15em;border:1px solid var(--faint);color:var(--dim);padding:0 4px 0 5px;line-height:15px;flex:none}
+.tag.r{border-color:var(--red);color:var(--red)}
+.ts{color:var(--faint);font-size:10.5px;font-variant-numeric:tabular-nums}
+.n-line.fresh{opacity:0;transition:opacity 4.5s ease}
+.n-line.fresh.in{opacity:1}
+.tape{position:relative;display:inline-block;padding:0 6px;background:var(--paper-2);overflow:hidden;box-shadow:0 0 0 1px color-mix(in srgb,var(--line) 55%,transparent)}
+.tape::after{content:attr(data-ghost);position:absolute;left:7px;top:1px;white-space:nowrap;opacity:.14;color:var(--ink);pointer-events:none;filter:blur(.3px)}
+
+/* 主体 */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:64px;align-items:start}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);letter-spacing:.1em;padding-bottom:8px;border-bottom:1px solid var(--line);margin:34px 0 4px}
+.sec-no{font-size:10.5px;color:var(--faint);letter-spacing:0}
+.sec-note{font-size:11px;color:var(--dim);letter-spacing:.02em;margin-left:auto}
+
+.row{display:grid;grid-template-columns:92px minmax(0,1fr);column-gap:18px;padding:15px 0 9px;align-items:start}
+.lbl{font-size:13px;color:var(--ink-2);padding-top:8px;letter-spacing:.08em}
+.field{min-width:0}
+.row.dup{max-height:0;padding-top:0;padding-bottom:0;opacity:0;overflow:hidden;transition:max-height 7s ease,padding 7s ease,opacity 10s ease}
+.row.dup.in{max-height:90px;padding-top:15px;padding-bottom:9px;opacity:1}
+.dup-line{height:33px;max-width:320px;border-bottom:1px solid var(--faint)}
+
+input[type=text]{
+  display:block;width:100%;max-width:320px;
+  font:inherit;font-size:15px;color:var(--ink);text-shadow:inherit;
+  background:transparent;border:0;border-bottom:1px solid var(--ink-2);border-radius:0;
+  padding:7px 2px 6px;outline:none;caret-color:var(--red);
+}
+input[type=text]::placeholder{color:var(--faint);opacity:1}
+input[type=text]:focus{border-bottom-color:var(--ink);background:var(--focus)}
+input:disabled,select:disabled{opacity:.55}
+.sel{position:relative;display:inline-block;max-width:100%}
+.sel select{
+  appearance:none;-webkit-appearance:none;
+  font:inherit;font-size:14px;color:var(--ink);
+  background:var(--paper);border:1px solid var(--line);border-radius:0;
+  padding:6px 34px 6px 10px;min-width:200px;max-width:100%;outline:none;cursor:pointer;
+}
+.sel select:focus-visible{outline:1px dashed var(--ink-2);outline-offset:3px}
+.sel::after{content:"▾";position:absolute;right:10px;top:50%;transform:translateY(-52%);font-size:11px;color:var(--dim);pointer-events:none}
+.hint{min-height:1.75em;margin-top:6px;font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+.hint.mem{color:var(--red);letter-spacing:.35em}
+
+.check{position:relative;display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--ink)}
+.check input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.box{width:13px;height:13px;border:1px solid var(--ink-2);display:inline-grid;place-items:center;background:var(--paper);flex:none}
+.box::after{content:"";width:7px;height:7px;background:var(--ink);transform:scale(0);transition:transform .08s}
+.check input:checked + .box::after{transform:scale(1)}
+.check input:focus-visible + .box{outline:1px dashed var(--ink-2);outline-offset:3px}
+.overprint{text-shadow:.6px .25px 0 currentColor,-.45px 0 0 var(--bleed)}
+.small{margin-top:7px;font-size:11.5px;color:var(--dim)}
+
+.acts{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{
+  font:inherit;font-size:13px;letter-spacing:.32em;text-shadow:inherit;
+  padding:9px 20px 9px 26px;min-width:96px;
+  color:var(--ink);background:var(--paper);
+  border:1px solid var(--ink-2);border-radius:0;box-shadow:2px 2px 0 var(--line);cursor:pointer;
+}
+.btn:hover{background:var(--paper-2)}
+.btn:active{box-shadow:1px 1px 0 var(--line);translate:1px 1px}
+.btn.busy{letter-spacing:.06em;padding-left:18px;padding-right:18px;min-width:13.5em;text-align:left;cursor:progress;color:var(--ink-2)}
+.ghost-btn{display:inline-block;width:96px;height:38px;border:1px dashed var(--line);opacity:.75}
+.result{margin-top:14px;min-height:3.4em;font-size:12.5px;color:var(--ink)}
+.result span{display:block}
+#res2{color:var(--dim);font-size:11.5px;margin-top:2px}
+.fine{margin:4px 0 0;padding-left:110px;font-size:11px;color:var(--dim)}
+
+.void-big{position:relative;display:block;height:clamp(150px,24vw,230px);margin-top:14px;border:1px dashed var(--line)}
+.corner{position:absolute;top:6px;left:8px;font-size:9.5px;color:var(--faint)}
+.corner.br{top:auto;left:auto;right:8px;bottom:6px}
+.mount{position:absolute;width:34%;height:46%;border:1px solid var(--faint);opacity:.3}
+.void-msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;letter-spacing:.4em;color:var(--faint);opacity:0;transition:opacity .25s;white-space:nowrap}
+.void-msg.show{opacity:1}
+
+.sign-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:36px;font-size:12px;color:var(--ink-2)}
+.sign-line{position:relative;flex:1;min-width:120px;height:28px;border-bottom:1px solid var(--ink-2)}
+.sign-line.short{flex:0 0 110px;min-width:90px}
+.sign-ghost{position:absolute;left:18px;bottom:2px;font-family:var(--cjk);font-size:21px;line-height:1;color:var(--ink);opacity:0;transform:rotate(-5deg) skewX(-8deg);transition:opacity 7s ease}
+.sign-ghost.in{opacity:.3}
+.memo{margin:22px 0 0;font-size:12px;color:var(--ink-2)}
+s{color:var(--dim);text-decoration-color:var(--red);text-decoration-thickness:1px}
+
+/* 侧栏 */
+.panel{position:relative;margin-bottom:22px;padding:14px 16px 16px;background:var(--paper);border:1px solid var(--line)}
+.p-title{font-size:11px;color:var(--dim);letter-spacing:.1em}
+.count{margin:10px 0 12px;font-size:38px;font-weight:300;line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap;overflow:hidden}
+.count.long{font-size:25px;line-height:1.52}
+.bar{display:grid;grid-template-columns:repeat(32,minmax(0,1fr));gap:2px;height:7px;margin-bottom:12px}
+.bar i{display:block;background:var(--faint);opacity:.4}
+.bar i.on{background:var(--ink-2);opacity:.9}
+.bar i.head{background:var(--yellow);opacity:.9;animation:headblink 2.8s infinite steps(1)}
+@keyframes headblink{0%,60%{opacity:.9}61%,100%{opacity:.2}}
+.p-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--faint)}
+
+.rec{width:100%;margin-top:10px;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+.rec th{text-align:left;font-weight:400;font-size:10px;letter-spacing:.1em;color:var(--faint);padding:0 6px 6px 0;border-bottom:1px solid var(--line)}
+.rec td{padding:6px 6px 6px 0;border-bottom:1px dotted var(--line);color:var(--ink-2);white-space:nowrap;height:30px}
+.rec th:first-child,.rec td:first-child{padding-left:6px}
+.rec tr.cur td{background:var(--yellow-bg);color:var(--ink)}
+.rec tr.cur td:first-child{box-shadow:inset 2px 0 0 var(--yellow)}
+.rec .sig{font-family:var(--cjk);color:var(--dim)}
+.erased{filter:url(#rub)}
+
+.void-side{display:block;position:relative;height:150px}
+.faint-note{position:absolute;left:2px;bottom:0;font-size:9.5px;color:var(--faint);opacity:.55;letter-spacing:.02em}
+
+/* 页脚 */
+.ftr{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 28px;margin-top:84px;padding-top:14px;border-top:1px solid var(--line);font-size:10.5px;color:var(--dim)}
+.ftr p{margin:0}
+#updated{font-variant-numeric:tabular-nums}
+
+/* 页面边缘与覆盖层 */
+.back{
+  position:fixed;z-index:40;left:env(safe-area-inset-left,0px);top:calc(38% + var(--by,0px));
+  writing-mode:vertical-rl;
+  font:inherit;font-size:10px;letter-spacing:.3em;text-shadow:inherit;
+  padding:9px 3px 7px;color:var(--dim);background:var(--paper);
+  border:1px solid var(--line);border-left:0;border-radius:0;cursor:pointer;
+  transition:top .8s ease;
+}
+.back::before{content:"";position:absolute;inset:-10px -12px -10px 0}
+.back:hover{color:var(--ink)}
+.presence{position:fixed;z-index:40;right:0;bottom:0;padding:4px 10px calc(5px + env(safe-area-inset-bottom,0px)) 10px;font-size:9.5px;letter-spacing:.06em;color:var(--dim);font-variant-numeric:tabular-nums;pointer-events:none}
+.whisper{position:fixed;z-index:55;left:0;top:0;font-size:11px;letter-spacing:.06em;color:var(--ink-2);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s linear}
+.whisper.show{opacity:.85}
+.scan{position:fixed;inset:0;z-index:60;pointer-events:none;background:repeating-linear-gradient(to bottom,var(--scan) 0 1px,transparent 1px 3px)}
+.noise{position:fixed;inset:0;width:100%;height:100%;z-index:59;pointer-events:none;opacity:var(--noise-op);mix-blend-mode:var(--noise-blend);image-rendering:pixelated}
+.band{position:fixed;left:0;right:0;top:0;height:72px;z-index:61;pointer-events:none;opacity:0;transform:translateY(-90px);
+  background:repeating-linear-gradient(to bottom,var(--band) 0 1px,transparent 1px 3px);
+  -webkit-backdrop-filter:blur(.5px) contrast(1.06);backdrop-filter:blur(.5px) contrast(1.06)}
+.band.run{animation:roll 7.5s linear 1}
+@keyframes roll{0%{transform:translateY(-90px);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:translateY(100vh);opacity:0}}
+.flk{animation:flk .28s steps(1) 1}
+@keyframes flk{0%{opacity:.5}30%{opacity:.95}55%{opacity:.62}70%,100%{opacity:1}}
+
+@media (max-width:860px){
+  .page{padding:34px 26px 110px 34px}
+  .grid{grid-template-columns:minmax(0,1fr);gap:30px}
+  .void-side{height:90px}
+}
+@media (max-width:640px){
+  .hdr-right{align-items:flex-start}
+  .meta{justify-content:flex-start;gap:4px 14px}
+}
+@media (max-width:560px){
+  .page{padding:26px 18px 104px 28px}
+  .row{grid-template-columns:minmax(0,1fr);row-gap:6px}
+  .row > .lbl:empty{display:none}
+  .lbl{padding-top:0}
+  .fine{padding-left:0}
+  .sec-note{margin-left:0;flex-basis:100%}
+  input[type=text],.sel select{font-size:16px}
+  .ftr{margin-top:64px}
+}
+@media (prefers-reduced-motion: reduce){
+  .led,.bar i.head{animation:none}
+  .band{display:none}
+  .flk{animation:none}
+}
+</style>
+</head>
+<body>
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <filter id="rub" x="-5%" y="-25%" width="110%" height="150%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.08 0.35" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 1.6" result="m"/>
+    <feComposite in="SourceGraphic" in2="m" operator="in"/>
+  </filter>
+</svg>
+
+<button class="back" id="back" type="button">返回</button>
+
+<div class="page" id="page">
+  <header class="hdr">
+    <div class="hdr-row">
+      <div class="hdr-left">
+        <div class="sys-code lowres d">表单编号 VR-07　仅限<span class="erased">值班</span>人员使用</div>
+        <h1 class="d" id="title" data-ghost="访客登记系统">访客登记系统</h1>
+        <div class="sub d" data-flicker><span id="checkNo">第 7 次检查记录</span><span class="sep">/</span><span>由系统自动生成</span></div>
+      </div>
+      <div class="hdr-right">
+        <div class="led-wrap"><span class="led" id="led" aria-hidden="true"></span><span>在线</span><span class="clock" id="clock">--:--:--</span></div>
+        <dl class="meta">
+          <div><dt>表</dt><dd id="formNo">VR-07</dd></div>
+          <div><dt>版本</dt><dd id="ver">3.1.4</dd></div>
+          <div class="d"><dt>访问编号</dt><dd id="visitNo">0001</dd></div>
+        </dl>
+      </div>
+    </div>
+    <div class="rule" aria-hidden="true"><span></span><span class="off"></span></div>
+  </header>
+
+  <section class="notice" id="notice" aria-label="系统提示">
+    <p class="n-line d"><span class="tag">提示</span><span>本页面没有被访问过。</span></p>
+    <p class="n-line d"><span class="tag">提示</span><span class="tape" data-ghost="请在离开前关闭本页面">请保持原样。</span></p>
+  </section>
+
+  <main class="grid">
+    <section class="col form-col">
+      <div class="sec-head d"><span class="sec-no">01</span><span>登记</span><span class="sec-note">记录将不会保存，除非它已经保存。</span></div>
+
+      <form id="form" novalidate autocomplete="off">
+        <div class="row" id="rowName">
+          <label class="lbl d" for="name">姓名</label>
+          <div class="field">
+            <input id="name" name="n" type="text" maxlength="24" placeholder="请输入姓名" spellcheck="false" autocomplete="off">
+            <div class="hint" id="nameHint" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="row" id="rowState">
+          <label class="lbl d" for="state">当前状态</label>
+          <div class="field">
+            <div class="sel">
+              <select id="state">
+                <option value="">请选择</option>
+                <option value="ok1">正常</option>
+                <option value="ok2">正常</option>
+                <option value="mostly">基本正常</option>
+                <option value="away">不在此处</option>
+                <option value="here">仍在此处</option>
+                <option value="unk">无法确认</option>
+              </select>
+            </div>
+            <div class="hint" id="stateHint" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="row" id="rowAck">
+          <span class="lbl"></span>
+          <div class="field">
+            <label class="check" id="ackLabel"><input type="checkbox" id="ack"><span class="box" aria-hidden="true"></span><span class="overprint">确认已阅读</span></label>
+            <div class="small d">请确认您没有在看这里。</div>
+          </div>
+        </div>
+
+        <div class="row" id="rowAct">
+          <span class="lbl"></span>
+          <div class="field">
+            <div class="acts">
+              <button type="submit" class="btn d" id="submit">提交</button>
+              <span class="ghost-btn void" data-w="此处原本有一个按钮。" aria-hidden="true"></span>
+            </div>
+            <div class="result" aria-live="polite"><span id="res1"></span><span id="res2"></span></div>
+          </div>
+        </div>
+      </form>
+      <p class="fine d">检测结束前，请不要确认。</p>
+
+      <div class="sec-head d"><span class="sec-no">02</span><span>附表 B</span><span class="sec-note" id="sec02note">（本节为空）</span></div>
+      <div class="void void-big" id="voidBig" data-w="B-1 已移除。|不在这里。|这里已经检查过了。|你刚才在这里。|空。" aria-hidden="true">
+        <span class="corner">B-1</span>
+        <span class="mount" id="mount"></span>
+        <span class="void-msg" id="voidMsg"></span>
+        <span class="corner br">—</span>
+      </div>
+
+      <div class="sign-row">
+        <span>签名</span><span class="sign-line void" id="sign" data-w="请不要在这里签名。|已签。"><span class="sign-ghost" aria-hidden="true"></span></span>
+        <span>日期</span><span class="sign-line short void"></span>
+      </div>
+      <p class="memo d">备注：<s>无</s> <s>无</s> 无</p>
+    </section>
+
+    <aside class="col side-col">
+      <div class="panel">
+        <div class="p-title">距离恢复正常还剩：</div>
+        <div class="count" id="count">—</div>
+        <div class="bar" id="bar" aria-hidden="true"></div>
+        <div class="p-foot"><span id="unit">单位：—</span><span id="countNote">上次归零：从未</span></div>
+      </div>
+
+      <div class="panel d" style="--dx:-2px">
+        <div class="p-title">检查记录</div>
+        <table class="rec">
+          <thead><tr><th>序号</th><th>日期</th><th>结果</th><th>签</th></tr></thead>
+          <tbody id="recBody"></tbody>
+        </table>
+      </div>
+
+      <div class="void void-side"><span class="faint-note">如果你看到这行字，说明它还没有出现。</span></div>
+    </aside>
+  </main>
+
+  <footer class="ftr">
+    <p id="ftrLine" class="d">如果页面没有变化，请不要继续等待。</p>
+    <p>最后更新时间：<span id="updated">—</span></p>
+    <p id="pg">第 0 页 / 共 1 页</p>
+  </footer>
+</div>
+
+<div class="presence" id="presence">在线访客：<span id="pc">1</span></div>
+<div class="scan" aria-hidden="true"></div>
+<canvas class="noise" id="noise" aria-hidden="true"></canvas>
+<div class="band" id="band" aria-hidden="true"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- 工具 ---------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const ri = (a, b) => Math.floor(rand(a, b + 1));
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const pad = (n, l = 2) => String(n).padStart(l, '0');
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const log = m => { try { console.info(m); } catch (e) {} };
+
+  /* ---------- 持久状态 ---------- */
+  const KEY = 'vr07:state';
+  const S = { visits: 0, last: '', kept: '', submits: 0, second: false, alt: -1, counter: 0, base: 0, seen: 0 };
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const o = JSON.parse(raw); if (o && typeof o === 'object') Object.assign(S, o); }
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const returning = S.visits > 0;
+  const prevSeen = S.seen;
+  S.visits = (S.visits | 0) + 1;
+  S.seen = Date.now();
+  save();
+
+  log('observer connected');
+  if (returning) log('memory restored');
+
+  /* ---------- 元素 ---------- */
+  const el = {
+    page: $('#page'), title: $('#title'), checkNo: $('#checkNo'), visitNo: $('#visitNo'),
+    ver: $('#ver'), formNo: $('#formNo'), led: $('#led'), clock: $('#clock'), notice: $('#notice'),
+    form: $('#form'), name: $('#name'), nameHint: $('#nameHint'), state: $('#state'), stateHint: $('#stateHint'),
+    ack: $('#ack'), ackLabel: $('#ackLabel'), submit: $('#submit'), res1: $('#res1'), res2: $('#res2'),
+    rowName: $('#rowName'), rowState: $('#rowState'),
+    count: $('#count'), bar: $('#bar'), unit: $('#unit'), countNote: $('#countNote'),
+    recBody: $('#recBody'), updated: $('#updated'), ftrLine: $('#ftrLine'), pg: $('#pg'),
+    pc: $('#pc'), presence: $('#presence'), back: $('#back'),
+    voidMsg: $('#voidMsg'), mount: $('#mount'), sign: $('#sign'), sec02note: $('#sec02note'), band: $('#band')
+  };
+
+  el.visitNo.textContent = pad(S.visits, 4);
+  const remembered = S.kept || S.last;
+  if (remembered) el.name.placeholder = remembered;
+
+  /* ---------- “注视”判断：指针附近、视口内、页面可见时，不改变 ---------- */
+  let gaze = null;
+  const setGaze = e => { gaze = { x: e.clientX, y: e.clientY }; };
+  addEventListener('pointermove', setGaze, { passive: true });
+  addEventListener('pointerdown', setGaze, { passive: true });
+
+  function unobserved(node, dist) {
+    if (document.hidden) return true;
+    if (!node || !node.isConnected) return true;
+    const r = node.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return true;
+    const g = gaze || { x: innerWidth / 2, y: innerHeight * 0.45 };
+    const dx = Math.max(r.left - g.x, 0, g.x - r.right);
+    const dy = Math.max(r.top - g.y, 0, g.y - r.bottom);
+    const lim = Math.min(dist, Math.max(120, Math.min(innerWidth, innerHeight) * 0.32));
+    return Math.hypot(dx, dy) > lim;
+  }
+  function whenUnobserved(node, fn, opt) {
+    const o = Object.assign({ dist: 260, maxWait: 18000 }, opt || {});
+    const t0 = Date.now();
+    (function check() {
+      if (unobserved(node, o.dist) || Date.now() - t0 > o.maxWait) { try { fn(); } catch (e) {} }
+      else setTimeout(check, ri(350, 700));
+    })();
+  }
+
+  /* ---------- 标题 ---------- */
+  const TITLE = '访客登记系统';
+  const ALTS = [['记', '忆'], ['访', '探'], ['登', '升']];
+  if (!(S.alt >= 0 && S.alt < ALTS.length)) { S.alt = ri(0, ALTS.length - 1); save(); }
+  const ALT = ALTS[S.alt];
+  let docTitle = TITLE;
+  let titleChanged = false;
+  const titleHTML = alt => alt ? TITLE.replace(ALT[0], '<span class="alt">' + ALT[1] + '</span>') : TITLE;
+  if (returning && S.second) {
+    setTimeout(() => {
+      el.title.innerHTML = titleHTML(true);
+      setTimeout(() => { if (!titleChanged) el.title.innerHTML = titleHTML(false); }, 240);
+    }, 700);
+  }
+
+  /* ---------- 打印残留：竖向墨痕、横向色带、空框中被移走的东西 ---------- */
+  for (let i = 0; i < 2; i++) {
+    const s = document.createElement('span');
+    s.className = 'streak';
+    s.style.left = rand(8, 92).toFixed(1) + '%';
+    s.style.backgroundPositionY = ri(0, 700) + 'px';
+    el.page.appendChild(s);
+  }
+  el.page.style.setProperty('--bandY', rand(22, 78).toFixed(1) + '%');
+  el.mount.style.left = rand(8, 54).toFixed(1) + '%';
+  el.mount.style.top = rand(14, 40).toFixed(1) + '%';
+  el.mount.style.transform = 'rotate(' + rand(-0.8, 0.8).toFixed(2) + 'deg)';
+
+  /* ---------- 检查记录 ---------- */
+  const now0 = new Date();
+  const todayStr = now0.getFullYear() + '-' + pad(now0.getMonth() + 1) + '-' + pad(now0.getDate());
+  const OLD = '1994-03-11';
+  const erasedIdx = pick([1, 2, 5]);
+  const rows = [
+    ['01', OLD, '完成', '—'],
+    ['02', OLD, '完成', '—'],
+    ['03', OLD, '完成', '—'],
+    ['04', OLD, '<s>未完成</s> 完成', '—'],
+    ['05', '', '', ''],
+    ['06', OLD, '完成', '—'],
+    ['07', todayStr, '未开始', ''],
+    ['08', '2038-03-11', '完成', S.kept || '—']
+  ];
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const empty = !r[1] && !r[2];
+    tr.dataset.n = String(i + 1);
+    const date = i === erasedIdx ? '<span class="erased">' + r[1] + '</span>' : r[1];
+    const v = empty ? ' void' : '';
+    tr.innerHTML = '<td>' + r[0] + '</td><td class="dt' + v + '">' + date + '</td><td class="res' + v + '"></td><td class="sig' + v + '">' + r[3] + '</td>';
+    tr.querySelector('.res').dataset.r = r[2];
+    el.recBody.appendChild(tr);
+  });
+  const d04 = el.recBody.children[3].querySelector('.dt');
+  d04.classList.add('d'); d04.style.setProperty('--dy', '1px');
+  el.recBody.children[ri(0, 2)].querySelector('.res').classList.add('d');
+
+  function highlight(n) {
+    $$('tr', el.recBody).forEach(tr => {
+      const res = tr.querySelector('.res');
+      const cur = Number(tr.dataset.n) === n;
+      tr.classList.toggle('cur', cur);
+      res.innerHTML = cur ? '进行中' : res.dataset.r;
+    });
+  }
+  highlight(7);
+
+  /* ---------- 每次加载都不完全相同的 1–3 像素错位 ---------- */
+  shuffle($$('.d')).slice(0, ri(4, 7)).forEach(x => {
+    const p = Math.random() < 0.75 ? '--dx' : '--dy';
+    x.style.setProperty(p, (Math.random() < 0.5 ? -1 : 1) * ri(1, 3) + 'px');
+  });
+
+  /* ---------- 时钟：偶尔停住一秒，或提前一秒 ---------- */
+  (function tickClock() {
+    const r = Math.random();
+    if (r > 0.06) {
+      const t = new Date(Date.now() + (r < 0.09 ? 1000 : 0));
+      el.clock.textContent = pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+    }
+    setTimeout(tickClock, 1005 - (Date.now() % 1000));
+  })();
+
+  /* ---------- 距离恢复正常还剩 ---------- */
+  let v = (typeof S.counter === 'number' && S.counter > 0) ? S.counter : rand(3600, 5400);
+  if (returning && prevSeen) {
+    const away = Math.max(0, (Date.now() - prevSeen) / 1000);
+    v += Math.min(away * 0.015, 600) + rand(2, 11);
+  }
+  S.base = Math.max(Number(S.base) || 0, v);
+  S.counter = v; save();
+
+  const SEG = 32;
+  el.bar.innerHTML = '<i></i>'.repeat(SEG);
+  const segs = $$('i', el.bar);
+  function fmtCount(x) {
+    if (x >= 1000) return String(Math.floor(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (x >= 100) return String(Math.floor(x));
+    if (x >= 10) return x.toFixed(1);
+    if (x >= 1) return x.toFixed(3);
+    const d = Math.min(14, Math.max(4, Math.ceil(-Math.log10(x)) + 2));
+    let s = x.toFixed(d);
+    if (/^0\.0+$/.test(s)) s = s.slice(0, -1) + '1';
+    return s;
+  }
+  function renderCount() {
+    const s = fmtCount(v);
+    el.count.textContent = s;
+    el.count.classList.toggle('long', s.length > 9);
+    const frac = Math.min(0.97, Math.max(0, 1 - v / S.base));
+    const on = Math.min(SEG - 1, Math.round(frac * SEG));
+    segs.forEach((g, i) => { g.className = i < on ? 'on' : (i === on ? 'head' : ''); });
+  }
+  renderCount();
+  let ticks = 0;
+  (function countTick() {
+    if (Math.random() < 0.07) {
+      whenUnobserved(el.count, () => { v += rand(1.5, 12) * (v > 100 ? 1 : v / 100 + 0.01); renderCount(); }, { maxWait: 9000 });
+    } else {
+      v -= v * rand(0.0006, 0.0028);
+      if (v < 1e-12) v = 1e-12 * rand(1.2, 3);
+      renderCount();
+    }
+    if (++ticks % 3 === 0) { S.counter = v; save(); }
+    setTimeout(countTick, rand(1300, 3400));
+  })();
+
+  /* ---------- 在线访客 ---------- */
+  let pcLogged = false;
+  const setPc = n => { el.pc.textContent = String(n); };
+  if (returning && S.second) { setPc(2); setTimeout(() => setPc(1), 1700); }
+  (function presenceLoop() {
+    setTimeout(() => {
+      if (Math.random() < 0.24) {
+        const go = () => {
+          setPc(0);
+          if (!pcLogged) { pcLogged = true; log('presence mismatch'); }
+          setTimeout(() => setPc(1), rand(900, 2800));
+        };
+        if (Math.random() < 0.5) go(); else whenUnobserved(el.presence, go, { dist: 180, maxWait: 7000 });
+      }
+      presenceLoop();
+    }, rand(6500, 15000));
+  })();
+
+  /* ---------- 最后更新时间 ---------- */
+  const fmtDT = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  let updBase = new Date(Date.now() - ri(2, 47) * 60000 - ri(0, 59) * 1000);
+  const showUpd = () => { el.updated.textContent = fmtDT(updBase); };
+  showUpd();
+  (function updLoop() {
+    setTimeout(() => {
+      if (Math.random() < 0.38) {
+        const k = Math.random();
+        let s;
+        if (k < 0.42) s = (now0.getFullYear() + ri(3, 40)) + '-03-11 03:11:' + pad(ri(0, 59));
+        else if (k < 0.84) s = ri(1979, 1998) + '-03-11 03:11:' + pad(ri(0, 59));
+        else s = fmtDT(new Date(Date.now() + ri(40, 600) * 1000));
+        el.updated.textContent = s;
+        setTimeout(showUpd, rand(1400, 4200));
+      }
+      updLoop();
+    }, rand(8000, 19000));
+  })();
+
+  /* ---------- 第一次点击：某处无关紧要的文字悄悄改变 ---------- */
+  const firstPool = [
+    () => { el.ver.textContent = '3.1.3'; },
+    () => { el.formNo.textContent = 'VR-08'; },
+    () => { el.pg.textContent = '第 0 页 / 共 0 页'; },
+    () => { el.countNote.textContent = '上次归零：明天'; },
+    () => { el.unit.textContent = '单位：人'; }
+  ];
+  document.addEventListener('pointerdown', function first() {
+    document.removeEventListener('pointerdown', first, true);
+    setTimeout(pick(firstPool), ri(250, 900));
+  }, true);
+
+  /* ---------- 打字式提示 ---------- */
+  function typeInto(node, text, cls) {
+    clearInterval(node._t);
+    node.className = node.dataset.base || node.className;
+    if (!node.dataset.base) node.dataset.base = node.className;
+    if (cls) node.classList.add(cls);
+    node.textContent = '';
+    const chars = Array.from(text || '');
+    let i = 0;
+    if (!chars.length) return;
+    node._t = setInterval(() => {
+      node.textContent += chars[i++];
+      if (i >= chars.length) clearInterval(node._t);
+    }, 45);
+  }
+
+  /* ---------- 姓名 ---------- */
+  const HINTS = [
+    '请保持原样。', '此字段通常为空。', '上一位也是这样写的。', '已比对。差异：无。',
+    '不需要填写真实的那一个。', '窗户应当保持关闭。', '输入速度正常。', '请不要回头确认。',
+    '我们稍后会忘记你。', '灯不需要打开。', '已记录两次。', '请继续。请不要继续。', '这一项不会被读取。'
+  ];
+  let hintQ = shuffle(HINTS.slice());
+  const nextHint = () => { if (!hintQ.length) hintQ = shuffle(HINTS.slice()); return hintQ.pop(); };
+  let hadValue = false, hintT = 0, composing = false;
+
+  function onName() {
+    const val = el.name.value;
+    if (val.length) {
+      hadValue = true;
+      const ch = Array.from(val).pop();
+      if (ch && ch.trim()) { S.last = ch; save(); }
+      clearTimeout(hintT);
+      hintT = setTimeout(() => typeInto(el.nameHint, nextHint()), rand(550, 1100));
+    } else if (hadValue) {
+      hadValue = false;
+      clearTimeout(hintT);
+      clearInterval(el.nameHint._t);
+      typeInto(el.nameHint, '');
+      el.nameHint.classList.add('mem');
+      el.nameHint.textContent = '已记住';
+      el.voidMsg.textContent = '已记住';
+      el.voidMsg.classList.add('show');
+      setTimeout(() => {
+        el.nameHint.textContent = '';
+        el.nameHint.classList.remove('mem');
+        el.voidMsg.classList.remove('show');
+      }, 1500);
+    }
+  }
+  el.name.addEventListener('compositionstart', () => { composing = true; });
+  el.name.addEventListener('compositionend', () => { composing = false; onName(); });
+  el.name.addEventListener('input', e => {
+    if ((composing || e.isComposing) && el.name.value) return;
+    onName();
+  });
+
+  /* ---------- 当前状态 ---------- */
+  let awayFixed = false;
+  const STATE_HINT = { ok1: '', ok2: '已选择另一个。', mostly: '请不要说明是哪一部分。', away: '已记录。', here: '收到。', unk: '无法确认的状态无法提交。' };
+  el.state.addEventListener('change', () => {
+    const val = el.state.value;
+    typeInto(el.stateHint, STATE_HINT[val] || '');
+    if (val === 'away' && !awayFixed) {
+      awayFixed = true;
+      setTimeout(() => whenUnobserved(el.state, () => {
+        if (el.state.value === 'away') { el.state.value = 'here'; el.stateHint.textContent = '已更正。'; }
+      }, { maxWait: 30000 }), 4000);
+    }
+  });
+
+  /* ---------- 确认已阅读：第一次勾选后，会在你不看时被取消 ---------- */
+  let ackUndone = false;
+  el.ack.addEventListener('change', () => {
+    if (el.ack.checked && !ackUndone) {
+      ackUndone = true;
+      setTimeout(() => whenUnobserved(el.ackLabel, () => { el.ack.checked = false; }, { dist: 200, maxWait: 20000 }), ri(3000, 6000));
+    }
+  });
+
+  /* ---------- 短暂错位 ---------- */
+  async function glitch(dur) {
+    const els = $$('.d');
+    const steps = reduced ? 1 : 4;
+    document.body.classList.add('glitching');
+    for (let s = 0; s < steps; s++) {
+      els.forEach(x => {
+        if (Math.random() < 0.55) { x.style.setProperty('--gx', ri(-7, 7) + 'px'); x.style.setProperty('--gy', ri(-2, 2) + 'px'); }
+        else { x.style.setProperty('--gx', '0px'); x.style.setProperty('--gy', '0px'); }
+      });
+      await wait(dur / steps);
+    }
+    els.forEach(x => { x.style.removeProperty('--gx'); x.style.removeProperty('--gy'); });
+    document.body.classList.remove('glitching');
+  }
+
+  /* ---------- 提交 ---------- */
+  let busy = false;
+  el.form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (busy) return;
+    busy = true;
+    const nameVal = el.name.value.trim();
+    [el.name, el.state, el.ack].forEach(x => { x.disabled = true; });
+    el.submit.disabled = true;
+    el.submit.classList.add('busy');
+    typeInto(el.res1, ''); typeInto(el.res2, '');
+    const label = '正在确认你是否是你';
+    let dots = 0;
+    el.submit.textContent = label;
+    const dotT = setInterval(() => { dots = (dots + 1) % 4; el.submit.textContent = label + '.'.repeat(dots); }, 420);
+
+    await wait(1300);
+    await glitch(1100);
+    await wait(700);
+
+    const src = Array.from(nameVal).filter(c => c.trim());
+    const keep = src.length ? src[ri(0, src.length - 1)] : (S.kept || S.last || '你');
+    el.name.value = keep;
+    hadValue = true;
+    el.state.selectedIndex = 0;
+    el.ack.checked = false;
+    typeInto(el.nameHint, ''); typeInto(el.stateHint, '');
+    S.kept = keep; S.submits = (S.submits | 0) + 1; save();
+    updBase = new Date(Date.now() + ri(1, 9) * 60000); showUpd();
+
+    await wait(600);
+    clearInterval(dotT);
+    [el.name, el.state, el.ack].forEach(x => { x.disabled = false; });
+    el.submit.disabled = false;
+    el.submit.classList.remove('busy');
+    el.submit.textContent = '提交';
+    typeInto(el.res1, '已提交。请不要再次提交。');
+    if (S.submits > 1) setTimeout(() => typeInto(el.res2, '你已经完成了第 0 次。'), 1400);
+    setTimeout(() => whenUnobserved(el.submit, () => { if (!busy) el.submit.textContent = '再次提交'; }, { maxWait: 40000 }), 6000);
+    busy = false;
+  });
+
+  /* ---------- 空白处的字 ---------- */
+  const WHISPERS = [
+    '不在这里。', '这里已经检查过了。', '请保持原样。', '你刚才在这里。', '空。', '不要在这里停留。',
+    '我们稍后会忘记你。', '本页面没有被访问过。', '还没有。', '请继续。', '这一栏不需要填写。', '已经有人看过这里了。'
+  ];
+  let lastWhisper = 0, cooldown = 3500, lastW = '', inBlank = null, dwellT = 0;
+  function whisper(x, y, text) {
+    const t = performance.now();
+    if (t - lastWhisper < cooldown) return;
+    lastWhisper = t; cooldown = rand(3200, 6000);
+    const w = document.createElement('span');
+    w.className = 'whisper';
+    w.setAttribute('aria-hidden', 'true');
+    w.textContent = text;
+    document.body.appendChild(w);
+    const r = w.getBoundingClientRect();
+    w.style.left = Math.min(Math.max(8, x + 12), innerWidth - r.width - 8) + 'px';
+    w.style.top = Math.min(Math.max(8, y - 20), innerHeight - r.height - 8) + 'px';
+    requestAnimationFrame(() => {
+      w.classList.add('show');
+      setTimeout(() => { w.classList.remove('show'); setTimeout(() => w.remove(), 220); }, ri(380, 620));
+    });
+  }
+  function whisperText(node) {
+    const v = node && node.closest && node.closest('[data-w]');
+    if (v) return pick(v.dataset.w.split('|'));
+    let t;
+    do { t = pick(WHISPERS); } while (t === lastW);
+    lastW = t;
+    return t;
+  }
+  const BLANK = 'html, body, .page, .grid, .col, .hdr, .hdr-row, .ftr, form, .row, .field, .acts, .sign-row';
+  function blankOf(t) {
+    if (!t || t.nodeType !== 1) return null;
+    const v = t.closest('.void');
+    if (v) return v;
+    return t.matches(BLANK) ? t : null;
+  }
+  document.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
+    const b = blankOf(e.target);
+    clearTimeout(dwellT);
+    if (b) {
+      if (b !== inBlank) {
+        inBlank = b;
+        const p = b.hasAttribute('data-w') ? 0.7 : 0.22;
+        if (Math.random() < p) whisper(e.clientX, e.clientY, whisperText(b));
+      }
+      const x = e.clientX, y = e.clientY;
+      dwellT = setTimeout(() => whisper(x, y, whisperText(b)), 1700);
+    } else {
+      inBlank = null;
+    }
+  }, { passive: true });
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    const b = blankOf(e.target);
+    if (b && Math.random() < 0.55) whisper(e.clientX, e.clientY, whisperText(b));
+  }, { passive: true });
+
+  /* ---------- 返回：不离开，只是退回一点 ---------- */
+  let checkN = 7, backN = 0, swapped = false;
+  function swapRows() {
+    const a = el.rowName, b = el.rowState;
+    const dup = el.form.querySelector('.row.dup');
+    if (!swapped) { el.form.insertBefore(b, a); }
+    else { el.form.insertBefore(a, b); if (dup) a.after(dup); }
+    swapped = !swapped;
+  }
+  el.back.addEventListener('click', () => {
+    backN++;
+    checkN = checkN <= 0 ? 7 : checkN - 1;
+    el.checkNo.textContent = '第 ' + checkN + ' 次检查记录';
+    highlight(checkN);
+    el.back.style.setProperty('--by', ((backN * 3) % 15) + 'px');
+    if (backN === 1) log('history: 0 entries');
+    if (backN % 4 === 2) swapRows();
+    if (backN === 3) { el.back.textContent = '已返回'; setTimeout(() => { el.back.textContent = '返回'; }, 5000); }
+    if (backN === 5) addNotice('当前页面即上一页。', false);
+  });
+
+  function addNotice(text, red) {
+    const p = document.createElement('p');
+    const t = new Date();
+    p.className = 'n-line fresh d';
+    p.innerHTML = '<span class="tag' + (red ? ' r' : '') + '">提示</span><span></span><span class="ts">' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds()) + '</span>';
+    p.children[1].textContent = text;
+    el.notice.appendChild(p);
+    requestAnimationFrame(() => requestAnimationFrame(() => p.classList.add('in')));
+  }
+
+  /* ---------- 停留超过 20 秒后 ---------- */
+  const at = (ms, fn) => setTimeout(fn, ms);
+
+  at(20000 + rand(0, 2500), () => whenUnobserved(el.title, () => {
+    titleChanged = true;
+    el.title.innerHTML = titleHTML(true);
+    docTitle = TITLE.replace(ALT[0], ALT[1]);
+    if (!document.hidden) document.title = docTitle;
+  }, { dist: 300, maxWait: 16000 }));
+
+  at(31000 + rand(0, 5000), () => whenUnobserved(el.rowName, () => {
+    const r = document.createElement('div');
+    r.className = 'row dup';
+    r.innerHTML = '<span class="lbl d" style="--dx:2px">姓名</span><div class="field"><div class="dup-line void" data-w="此处原本有一个输入框。|已填写。|请不要填写这一栏。"></div></div>';
+    el.rowName.after(r);
+    requestAnimationFrame(() => requestAnimationFrame(() => r.classList.add('in')));
+  }, { maxWait: 18000 }));
+
+  at(44000 + rand(0, 6000), () => whenUnobserved(el.led, () => el.led.classList.add('off'), { dist: 220, maxWait: 15000 }));
+
+  at(58000 + rand(0, 8000), () => {
+    addNotice('检测到第二位访客。', true);
+    S.second = true; save();
+    log('observer connected');
+  });
+
+  at(84000 + rand(0, 10000), () => whenUnobserved(el.sign, () => {
+    const g = el.sign.querySelector('.sign-ghost');
+    g.textContent = S.kept || S.last || '·';
+    g.classList.add('in');
+  }, { maxWait: 25000 }));
+
+  at(104000 + rand(0, 12000), () => whenUnobserved(el.ftrLine, () => {
+    el.ftrLine.textContent = '谢谢你替我们保持页面打开。';
+  }, { maxWait: 30000 }));
+
+  at(145000 + rand(0, 15000), () => whenUnobserved(el.sec02note, () => {
+    el.sec02note.textContent = '（本节不为空）';
+  }, { maxWait: 30000 }));
+
+  at(122000, function drift() {
+    const x = pick($$('.d'));
+    whenUnobserved(x, () => {
+      const prop = Math.random() < 0.7 ? '--dx' : '--dy';
+      const cur = parseFloat(x.style.getPropertyValue(prop)) || 0;
+      x.style.setProperty(prop, Math.max(-4, Math.min(4, cur + (Math.random() < 0.5 ? -1 : 1))) + 'px');
+    }, { maxWait: 12000 });
+    setTimeout(drift, rand(16000, 30000));
+  });
+
+  /* ---------- 轻微闪烁、抖动、扫过的信号带 ---------- */
+  (function flick() {
+    setTimeout(() => {
+      const x = pick($$('[data-flicker], .d'));
+      if (x) { x.classList.remove('flk'); void x.offsetWidth; x.classList.add('flk'); }
+      flick();
+    }, reduced ? 15000 : rand(2200, 6000));
+  })();
+
+  if (!reduced) {
+    (function jitter() {
+      setTimeout(() => {
+        el.page.style.translate = (Math.random() < 0.5 ? -1 : 1) + 'px 0';
+        if (Math.random() < 0.3) el.page.style.opacity = '0.965';
+        setTimeout(() => { el.page.style.translate = ''; el.page.style.opacity = ''; }, rand(60, 130));
+        jitter();
+      }, rand(5000, 13000));
+    })();
+    (function band() {
+      setTimeout(() => {
+        if (!document.hidden) { el.band.classList.remove('run'); void el.band.offsetWidth; el.band.classList.add('run'); }
+        band();
+      }, rand(14000, 32000));
+    })();
+  }
+
+  /* ---------- 压缩噪点 ---------- */
+  const cv = $('#noise');
+  const cx = cv.getContext('2d');
+  let frames = [], fi = 0, lastW0 = 0, lastH0 = 0;
+  function buildNoise() {
+    const w = Math.max(1, Math.ceil(innerWidth / 3)), h = Math.max(1, Math.ceil(innerHeight / 3));
+    if (Math.abs(w - lastW0) < 20 && Math.abs(h - lastH0) < 20 && frames.length) return;
+    lastW0 = w; lastH0 = h;
+    cv.width = w; cv.height = h;
+    frames = [];
+    const n = reduced ? 1 : 5;
+    for (let f = 0; f < n; f++) {
+      const img = cx.createImageData(w, h);
+      const d = new Uint32Array(img.data.buffer);
+      for (let i = 0; i < d.length; i++) {
+        const g = (Math.random() * 255) | 0;
+        const a = (Math.random() * Math.random() * 110) | 0;
+        d[i] = ((a << 24) | (g << 16) | (g << 8) | g) >>> 0;
+      }
+      const blocks = ri(2, 7);
+      for (let b = 0; b < blocks; b++) {
+        const bw = 8 * ri(1, 4), bh = 8 * ri(1, 2);
+        const bx = ri(0, Math.max(0, w - bw)), by = ri(0, Math.max(0, h - bh));
+        const g = ri(60, 200), a = ri(28, 64);
+        const val = ((a << 24) | (g << 16) | (g << 8) | g) >>> 0;
+        for (let y = by; y < by + bh && y < h; y++) for (let x = bx; x < bx + bw && x < w; x++) d[y * w + x] = val;
+      }
+      frames.push(img);
+    }
+    cx.putImageData(frames[0], 0, 0);
+  }
+  buildNoise();
+  if (!reduced) {
+    (function noiseLoop() {
+      if (!document.hidden && frames.length > 1) { fi = (fi + 1) % frames.length; cx.putImageData(frames[fi], 0, 0); }
+      setTimeout(noiseLoop, rand(90, 160));
+    })();
+  }
+  let rz = 0;
+  addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(buildNoise, 300); });
+
+  /* ---------- 离开与回来 ---------- */
+  let hideT = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      S.counter = v; S.seen = Date.now(); save();
+      hideT = setTimeout(() => { document.title = '（1）' + docTitle; }, 2500);
+    } else {
+      clearTimeout(hideT);
+      setTimeout(() => { document.title = docTitle; }, 700);
+    }
+  });
+  addEventListener('pagehide', () => { S.counter = v; S.seen = Date.now(); save(); });
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"78694dd907a245f5a9176ee8479b2a13","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
